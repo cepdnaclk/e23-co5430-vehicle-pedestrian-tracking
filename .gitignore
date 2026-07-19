@@ -1,0 +1,14 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Raw dataset (too large for git)
+data/raw/
+data/yolo_dataset/
+
+# Preview images
+data/preprocessing/previews/
+
+# OS files
+.DS_Store
+Thumbs.db
