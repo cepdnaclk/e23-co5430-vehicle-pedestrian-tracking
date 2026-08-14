@@ -12,3 +12,9 @@ data/preprocessing/previews/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Model weights (too large for git)
+models/*.pt
+# Output videos
+outputs/*.mp4
+outputs/*.avi
