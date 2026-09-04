@@ -163,6 +163,11 @@ def run(model_path: str,
     tracker = Sort(max_age=max_age, min_hits=min_hits, iou_threshold=iou_threshold)
     print(f"[4/5] SORT tracker: max_age={max_age}, min_hits={min_hits}, iou_thr={iou_threshold}")
 
+    # Optional: save predictions as MOTChallenge .txt for evaluation
+    txt_path = str(output_path).replace(".mp4", "_pred.txt")
+    txt_file = open(txt_path, "w")
+    print(f"      Predictions will be saved to: {txt_path}")
+
     # ── 5. Frame-by-frame loop ──────────────────────────────────────────────
     print(f"[5/5] Tracking {len(frame_paths)} frames...\n")
     t_start = time.time()
@@ -206,6 +211,13 @@ def run(model_path: str,
         # ── 5e: Write frame ─────────────────────────────────────────────
         writer.write(frame)
 
+        # ── 5f: Save predictions (MOTChallenge format) ───────────────────
+        # format: frame,id,x,y,w,h,conf,-1,-1,-1
+        for track in tracks:
+            x1,y1,x2,y2,tid = int(track[0]),int(track[1]),int(track[2]),int(track[3]),int(track[4])
+            w_box = x2-x1; h_box = y2-y1
+            txt_file.write(f"{frame_idx+1},{tid},{x1},{y1},{w_box},{h_box},1,-1,-1,-1\n")
+
         # Progress print every 50 frames
         if (frame_idx + 1) % 50 == 0 or frame_idx == 0:
             elapsed = time.time() - t_start
@@ -217,6 +229,7 @@ def run(model_path: str,
                   f"ETA={eta:.0f}s")
 
     writer.release()
+    txt_file.close()
     elapsed = time.time() - t_start
     print(f"\n=== DONE ===")
     print(f"  Total frames   : {len(frame_paths)}")
@@ -224,6 +237,7 @@ def run(model_path: str,
     print(f"  Time elapsed   : {elapsed:.1f}s  ({elapsed/60:.1f} min)")
     print(f"  Avg speed      : {len(frame_paths)/elapsed:.1f} fps")
     print(f"  Output saved   : {Path(output_path).resolve()}")
+    print(f"  Predictions txt: {Path(txt_path).resolve()}")
 
 
 # =============================================================================
