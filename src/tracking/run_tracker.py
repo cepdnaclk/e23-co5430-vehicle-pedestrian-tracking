@@ -214,7 +214,8 @@ def run(model_path: str,
             # format: frame,id,x,y,w,h,conf,-1,-1,-1
             for track in tracks:
                 x1,y1,x2,y2,tid = int(track[0]),int(track[1]),int(track[2]),int(track[3]),int(track[4])
-                w_box = x2-x1; h_box = y2-y1
+                w_box = x2-x1
+                h_box = y2-y1
                 txt_file.write(f"{frame_idx+1},{tid},{x1},{y1},{w_box},{h_box},1,-1,-1,-1\n")
 
             # Progress print every 50 frames
