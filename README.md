@@ -80,8 +80,8 @@ pip install ultralytics filterpy scipy torch torchvision opencv-python numpy
 ### Step 1 — Preprocess MOT16 Data
 ```bash
 python data/preprocessing/preprocess.py \
-    --input_dir  data/raw/MOT16/train \
-    --output_dir data/yolo_dataset
+    --mot_root data/raw/MOT16 \
+    --output   data/yolo_dataset
 ```
 
 ### Step 2 — Train YOLOv8 (Google Colab recommended)
