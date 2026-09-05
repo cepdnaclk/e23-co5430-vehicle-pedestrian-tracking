@@ -104,64 +104,72 @@ def run(model_path, seq_dir, output_path, conf=0.30, device="cpu"):
 
     with open(txt_path, "w") as txt_file:
         for idx, fpath in enumerate(frame_paths):
-        frame = cv2.imread(str(fpath))
-        if frame is None:
-            continue
+            frame = cv2.imread(str(fpath))
+            if frame is None:
+                continue
 
-        # ultralytics ByteTrack: tracker="bytetrack.yaml" activates it
-        results = model.track(
-            frame,
-            conf=conf,
-            tracker="bytetrack.yaml",   # ← the only difference from detection
-            persist=True,               # keep track state between calls
-            verbose=False,
-            device=device,
-        )
-        result = results[0]
+            # ultralytics ByteTrack: tracker="bytetrack.yaml" activates it
+            results = model.track(
+                frame,
+                conf=conf,
+                tracker="bytetrack.yaml",
+                persist=True,
+                verbose=False,
+                device=device,
+            )
+            result = results[0]
 
-        n_dets = len(result.boxes) if result.boxes else 0
-        total_dets += n_dets
+            n_dets = len(result.boxes) if result.boxes else 0
+            total_dets += n_dets
 
-        frame = draw_tracks(frame, result)
+            frame = draw_tracks(frame, result)
 
-        # Overlay stats
-        seq_name = Path(seq_dir).name
-        n_tracks = sum(1 for b in result.boxes if b.id is not None) if result.boxes else 0
-        cv2.putText(frame, f"{seq_name}  Frame {idx+1}/{len(frame_paths)} [ByteTrack]",
-                    (10,28), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255,255,255), 2, cv2.LINE_AA)
-        cv2.putText(frame, f"Active tracks: {n_tracks}",
-                    (10,58), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,144), 2, cv2.LINE_AA)
-        cv2.putText(frame, f"Dets: {n_dets}",
-                    (10,84), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,200,0), 2, cv2.LINE_AA)
+            # Overlay stats
+            seq_name = Path(seq_dir).name
+            n_tracks = sum(1 for b in result.boxes if b.id is not None) if result.boxes else 0
+            cv2.putText(frame,
+                        f"{seq_name}  Frame {idx+1}/{len(frame_paths)} [ByteTrack]",
+                        (10, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(frame, f"Active tracks: {n_tracks}",
+                        (10, 58), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 144), 2, cv2.LINE_AA)
+            cv2.putText(frame, f"Dets: {n_dets}",
+                        (10, 84), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 200, 0), 2, cv2.LINE_AA)
 
-        writer.write(frame)
+            writer.write(frame)
 
-        # Save predictions in MOTChallenge format: frame,id,x,y,w,h,conf,-1,-1,-1
-        if result.boxes:
-            for box in result.boxes:
-                if box.id is None:
-                    continue
-                tid = int(box.id.item())
-                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-                w_box, h_box = x2 - x1, y2 - y1
-                txt_file.write(f"{idx+1},{tid},{x1},{y1},{w_box},{h_box},1,-1,-1,-1\n")
+            # Save predictions in MOTChallenge format: frame,id,x,y,w,h,conf,-1,-1,-1
+            if result.boxes:
+                for box in result.boxes:
+                    if box.id is None:
+                        continue
+                    tid = int(box.id.item())
+                    x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                    w_box = x2 - x1
+                    h_box = y2 - y1
+                    txt_file.write(
+                        f"{idx+1},{tid},{x1},{y1},{w_box},{h_box},1,-1,-1,-1\n"
+                    )
 
+            # Progress print every 50 frames (always fires, not inside if result.boxes)
             if (idx+1) % 50 == 0 or idx == 0:
-                elapsed = time.time()-t_start
-                speed = (idx+1)/elapsed
-                eta = (len(frame_paths)-idx-1)/speed
-                print(f"  Frame {idx+1:4d}/{len(frame_paths)} | "
-                      f"tracks={n_tracks:3d} | speed={speed:.1f} fps | ETA={eta:.0f}s")
+                elapsed = time.time() - t_start
+                speed   = (idx+1) / elapsed
+                eta     = (len(frame_paths)-idx-1) / speed
+                print(
+                    f"  Frame {idx+1:4d}/{len(frame_paths)} | "
+                    f"tracks={n_tracks:3d} | speed={speed:.1f} fps | ETA={eta:.0f}s"
+                )
 
     writer.release()
-    elapsed = time.time()-t_start
-    print(f"\n=== DONE ===")
+    elapsed = time.time() - t_start
+    print("\n=== DONE ===")
     print(f"  Total frames : {len(frame_paths)}")
     print(f"  Total dets   : {total_dets}")
     print(f"  Time elapsed : {elapsed:.1f}s  ({elapsed/60:.1f} min)")
     print(f"  Avg speed    : {len(frame_paths)/elapsed:.1f} fps")
     print(f"  Output saved : {Path(output_path).resolve()}")
     print(f"  Predictions  : {Path(txt_path).resolve()}")
+
 
 
 def main():
