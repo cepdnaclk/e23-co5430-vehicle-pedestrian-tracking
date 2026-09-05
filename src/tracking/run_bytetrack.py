@@ -98,12 +98,12 @@ def run(model_path, seq_dir, output_path, conf=0.30, device="cpu"):
 
     # Save predictions in MOTChallenge format for evaluate.py
     txt_path = str(output_path).replace(".mp4", "_pred.txt")
-    txt_file = open(txt_path, "w")
 
     t_start = time.time()
     total_dets = 0
 
-    for idx, fpath in enumerate(frame_paths):
+    with open(txt_path, "w") as txt_file:
+        for idx, fpath in enumerate(frame_paths):
         frame = cv2.imread(str(fpath))
         if frame is None:
             continue
@@ -146,15 +146,14 @@ def run(model_path, seq_dir, output_path, conf=0.30, device="cpu"):
                 w_box, h_box = x2 - x1, y2 - y1
                 txt_file.write(f"{idx+1},{tid},{x1},{y1},{w_box},{h_box},1,-1,-1,-1\n")
 
-        if (idx+1) % 50 == 0 or idx == 0:
-            elapsed = time.time()-t_start
-            speed = (idx+1)/elapsed
-            eta = (len(frame_paths)-idx-1)/speed
-            print(f"  Frame {idx+1:4d}/{len(frame_paths)} | "
-                  f"tracks={n_tracks:3d} | speed={speed:.1f} fps | ETA={eta:.0f}s")
+            if (idx+1) % 50 == 0 or idx == 0:
+                elapsed = time.time()-t_start
+                speed = (idx+1)/elapsed
+                eta = (len(frame_paths)-idx-1)/speed
+                print(f"  Frame {idx+1:4d}/{len(frame_paths)} | "
+                      f"tracks={n_tracks:3d} | speed={speed:.1f} fps | ETA={eta:.0f}s")
 
     writer.release()
-    txt_file.close()
     elapsed = time.time()-t_start
     print(f"\n=== DONE ===")
     print(f"  Total frames : {len(frame_paths)}")
