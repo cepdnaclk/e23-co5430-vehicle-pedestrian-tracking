@@ -213,7 +213,7 @@ def main():
     for name, path in [("SORT", args.pred_sort), ("ByteTrack", args.pred_byte)]:
         if not os.path.exists(path):
             print(f"\n[SKIP] {name}: prediction file not found at {path}")
-            print(f"       Run the tracker with --save_txt flag first.")
+            print(f"       Run run_tracker.py (SORT) or run_bytetrack.py (ByteTrack) first.")
             continue
         print(f"\nEvaluating {name}...")
         preds = load_predictions(path)
