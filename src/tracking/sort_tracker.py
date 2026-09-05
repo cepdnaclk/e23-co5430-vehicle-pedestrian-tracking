@@ -269,18 +269,19 @@ class Sort:
         self.frame_count += 1
 
         # ── Step 1: Predict new positions for all existing tracks ──
-        trks = np.zeros((len(self.trackers), 4))
         to_del = []
         for t, trk in enumerate(self.trackers):
             pos = trk.predict()
-            trks[t] = pos
             if np.any(np.isnan(pos)):
                 to_del.append(t)
 
-        # Remove degenerate trackers
+        # Remove degenerate trackers (iterate in reverse to keep indices valid)
         for t in reversed(to_del):
             self.trackers.pop(t)
-        trks = trks[:len(self.trackers)]
+
+        # Rebuild trks cleanly from the surviving trackers so indices are correct
+        trks = (np.array([trk.get_state() for trk in self.trackers])
+                if self.trackers else np.empty((0, 4)))
 
         # ── Step 2: Match detections to predictions ──
         matched, unmatched_dets, unmatched_trks = associate_detections_to_trackers(
