@@ -15,11 +15,13 @@
 
 ## Project Overview
 
-This project implements a **multi-object tracking (MOT)** system for detecting and tracking pedestrians in video sequences. We use:
+This project implements a **multi-object tracking (MOT)** system for detecting and tracking **pedestrians** in video sequences. We use:
 
 1. **YOLOv8n** — object detector fine-tuned on the MOT16 dataset
 2. **SORT** — Simple Online and Realtime Tracking (Kalman Filter + Hungarian Algorithm)
 3. **ByteTrack** — improved tracker with two-pass association for better occlusion handling
+
+> **Note:** Although the project topic covers vehicles and pedestrians, the MOT16 dataset used for training is pedestrian-focused. Car annotations did not survive the visibility filter (`vis ≥ 0.3`), so the trained model detects **pedestrians only**.
 
 **Dataset:** [MOT16 Benchmark](https://motchallenge.net/data/MOT16/) — 7 training sequences of urban street scenes
 
