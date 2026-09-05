@@ -96,10 +96,14 @@ def run(model_path, seq_dir, output_path, conf=0.30, device="cpu"):
     print(f"[4/5] ByteTrack: conf_threshold={conf}, device={device}")
     print(f"[5/5] Tracking {len(frame_paths)} frames...\n")
 
+    # Save predictions in MOTChallenge format for evaluate.py
+    txt_path = str(output_path).replace(".mp4", "_pred.txt")
+
     t_start = time.time()
     total_dets = 0
 
-    for idx, fpath in enumerate(frame_paths):
+    with open(txt_path, "w") as txt_file:
+        for idx, fpath in enumerate(frame_paths):
         frame = cv2.imread(str(fpath))
         if frame is None:
             continue
@@ -132,12 +136,22 @@ def run(model_path, seq_dir, output_path, conf=0.30, device="cpu"):
 
         writer.write(frame)
 
-        if (idx+1) % 50 == 0 or idx == 0:
-            elapsed = time.time()-t_start
-            speed = (idx+1)/elapsed
-            eta = (len(frame_paths)-idx-1)/speed
-            print(f"  Frame {idx+1:4d}/{len(frame_paths)} | "
-                  f"tracks={n_tracks:3d} | speed={speed:.1f} fps | ETA={eta:.0f}s")
+        # Save predictions in MOTChallenge format: frame,id,x,y,w,h,conf,-1,-1,-1
+        if result.boxes:
+            for box in result.boxes:
+                if box.id is None:
+                    continue
+                tid = int(box.id.item())
+                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                w_box, h_box = x2 - x1, y2 - y1
+                txt_file.write(f"{idx+1},{tid},{x1},{y1},{w_box},{h_box},1,-1,-1,-1\n")
+
+            if (idx+1) % 50 == 0 or idx == 0:
+                elapsed = time.time()-t_start
+                speed = (idx+1)/elapsed
+                eta = (len(frame_paths)-idx-1)/speed
+                print(f"  Frame {idx+1:4d}/{len(frame_paths)} | "
+                      f"tracks={n_tracks:3d} | speed={speed:.1f} fps | ETA={eta:.0f}s")
 
     writer.release()
     elapsed = time.time()-t_start
@@ -147,6 +161,7 @@ def run(model_path, seq_dir, output_path, conf=0.30, device="cpu"):
     print(f"  Time elapsed : {elapsed:.1f}s  ({elapsed/60:.1f} min)")
     print(f"  Avg speed    : {len(frame_paths)/elapsed:.1f} fps")
     print(f"  Output saved : {Path(output_path).resolve()}")
+    print(f"  Predictions  : {Path(txt_path).resolve()}")
 
 
 def main():

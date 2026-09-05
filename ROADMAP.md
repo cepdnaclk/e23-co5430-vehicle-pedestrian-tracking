@@ -27,7 +27,7 @@ This roadmap outlines the milestones and timeline for the Computer Vision Projec
 - **Owner(s):** Piraveen, Thanush
 
 ### M4 – Method Development (Jul 29 – Aug 15, 2026)
-- **Focus:** Integrate appearance re-ID (DeepSORT) / ByteTrack-style association; tune parameters.
+- **Focus:** Integrated ByteTrack (built into ultralytics) for two-pass association; tuned parameters. ByteTrack reduces ID switches during occlusion compared to SORT baseline.
 - **Owner(s):** All members
 
 ### M5 – Prototype & Preliminary Results (Aug 18, 2026)

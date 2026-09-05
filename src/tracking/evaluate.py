@@ -124,7 +124,9 @@ def evaluate_sequence(gt: dict, preds: dict, iou_threshold=0.50):
     """
     TP = 0; FP = 0; FN = 0; ID_SW = 0
     total_gt = 0; total_localisation_error = 0
-    prev_matches = {}   # gt_id → pred_id from last frame
+    prev_matches = {}       # gt_id → pred_id from last frame
+    unique_gt_ids = set()   # all GT IDs seen (for IDF1)
+    all_matched_gt_ids = set()  # GT IDs matched at least once (for IDF1)
 
     all_frames = sorted(set(gt.keys()) | set(preds.keys()))
 
@@ -132,6 +134,10 @@ def evaluate_sequence(gt: dict, preds: dict, iou_threshold=0.50):
         gt_boxes   = gt.get(frame, [])
         pred_boxes = preds.get(frame, [])
         total_gt  += len(gt_boxes)
+
+        # Collect unique GT IDs (reuse loop — no second pass needed)
+        for gb in gt_boxes:
+            unique_gt_ids.add(gb[4])
 
         # Build IoU matrix
         matched_gt   = set()
@@ -155,6 +161,7 @@ def evaluate_sequence(gt: dict, preds: dict, iou_threshold=0.50):
                 gt_id   = gt_boxes[best_gi][4]
                 pred_id = pb[4]
                 current_matches[gt_id] = pred_id
+                all_matched_gt_ids.add(gt_id)  # track while we're here
 
                 # Check for ID switch
                 if gt_id in prev_matches and prev_matches[gt_id] != pred_id:
@@ -170,33 +177,18 @@ def evaluate_sequence(gt: dict, preds: dict, iou_threshold=0.50):
     MOTA = 1.0 - (FP + FN + ID_SW) / max(total_gt, 1)
     MOTP = total_localisation_error / max(TP, 1)
 
-    # Simplified IDF1 (fraction of GT matched at least once)
-    unique_gt = set()
-    unique_matched = set()
-    for frame in all_frames:
-        for gb in gt.get(frame, []):
-            unique_gt.add(gb[4])
-    # Track which GT IDs were ever matched
-    all_matched_gt_ids = set()
-    for frame in all_frames:
-        gt_boxes   = gt.get(frame, [])
-        pred_boxes = preds.get(frame, [])
-        for gb in gt_boxes:
-            for pb in pred_boxes:
-                if compute_iou(pb[:4], gb[:4]) >= iou_threshold:
-                    all_matched_gt_ids.add(gb[4])
-                    break
-    IDF1_approx = len(all_matched_gt_ids) / max(len(unique_gt), 1)
+    # Simplified IDF1: fraction of GT objects ever detected
+    IDF1_approx = len(all_matched_gt_ids) / max(len(unique_gt_ids), 1)
 
     return {
-        "MOTA":     round(MOTA, 4),
-        "MOTP":     round(MOTP, 4),
+        "MOTA":        round(MOTA, 4),
+        "MOTP":        round(MOTP, 4),
         "IDF1_approx": round(IDF1_approx, 4),
-        "TP":       TP,
-        "FP":       FP,
-        "FN":       FN,
-        "ID_SW":    ID_SW,
-        "GT_objs":  total_gt,
+        "TP":          TP,
+        "FP":          FP,
+        "FN":          FN,
+        "ID_SW":       ID_SW,
+        "GT_objs":     total_gt,
     }
 
 
@@ -221,7 +213,7 @@ def main():
     for name, path in [("SORT", args.pred_sort), ("ByteTrack", args.pred_byte)]:
         if not os.path.exists(path):
             print(f"\n[SKIP] {name}: prediction file not found at {path}")
-            print(f"       Run the tracker with --save_txt flag first.")
+            print(f"       Run run_tracker.py (SORT) or run_bytetrack.py (ByteTrack) first.")
             continue
         print(f"\nEvaluating {name}...")
         preds = load_predictions(path)

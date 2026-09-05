@@ -94,6 +94,11 @@ class KalmanBoxTracker:
         self.hit_streak = 0    # consecutive hits (used for min_hits check)
         self.age = 0           # total frames this track has existed
 
+    @classmethod
+    def reset_count(cls):
+        """Reset the global ID counter (call when starting a new sequence)."""
+        cls.count = 0
+
     # ── Static helpers ─────────────────────────────────────────────────────
 
     @staticmethod
@@ -249,6 +254,7 @@ class Sort:
         self.iou_threshold = iou_threshold
         self.trackers: list[KalmanBoxTracker] = []
         self.frame_count = 0
+        KalmanBoxTracker.reset_count()  # reset IDs so each sequence starts from 0
 
     def update(self, dets=np.empty((0, 5))):
         """
@@ -269,18 +275,19 @@ class Sort:
         self.frame_count += 1
 
         # ── Step 1: Predict new positions for all existing tracks ──
-        trks = np.zeros((len(self.trackers), 4))
         to_del = []
         for t, trk in enumerate(self.trackers):
             pos = trk.predict()
-            trks[t] = pos
             if np.any(np.isnan(pos)):
                 to_del.append(t)
 
-        # Remove degenerate trackers
+        # Remove degenerate trackers (iterate in reverse to keep indices valid)
         for t in reversed(to_del):
             self.trackers.pop(t)
-        trks = trks[:len(self.trackers)]
+
+        # Rebuild trks cleanly from the surviving trackers so indices are correct
+        trks = (np.array([trk.get_state() for trk in self.trackers])
+                if self.trackers else np.empty((0, 4)))
 
         # ── Step 2: Match detections to predictions ──
         matched, unmatched_dets, unmatched_trks = associate_detections_to_trackers(
