@@ -74,7 +74,8 @@ def get_colour(track_id: int) -> tuple:
 # =============================================================================
 # DRAW  —  render one frame's tracks onto the image
 # =============================================================================
-CLASS_NAMES = ["pedestrian", "car"]
+# Model detects pedestrians only (fine-tuned on MOT16 pedestrian class)
+CLASS_NAMES = ["pedestrian"]
 
 def draw_tracks(frame: np.ndarray, tracks: np.ndarray, class_id: int = 0) -> np.ndarray:
     """
@@ -186,8 +187,6 @@ def run(model_path: str,
             if results.boxes is not None and len(results.boxes) > 0:
                 boxes  = results.boxes.xyxy.cpu().numpy()   # (N, 4) pixel coords
                 confs  = results.boxes.conf.cpu().numpy()   # (N,)
-                # cls  = results.boxes.cls.cpu().numpy()    # (N,) — class ids
-                # For now, treat all detections as pedestrian (class 0)
                 dets_for_sort = np.hstack([boxes, confs.reshape(-1, 1)])
                 total_dets += len(dets_for_sort)
 
