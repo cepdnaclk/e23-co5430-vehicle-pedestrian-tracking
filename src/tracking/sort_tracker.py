@@ -94,6 +94,11 @@ class KalmanBoxTracker:
         self.hit_streak = 0    # consecutive hits (used for min_hits check)
         self.age = 0           # total frames this track has existed
 
+    @classmethod
+    def reset_count(cls):
+        """Reset the global ID counter (call when starting a new sequence)."""
+        cls.count = 0
+
     # ── Static helpers ─────────────────────────────────────────────────────
 
     @staticmethod
@@ -249,6 +254,7 @@ class Sort:
         self.iou_threshold = iou_threshold
         self.trackers: list[KalmanBoxTracker] = []
         self.frame_count = 0
+        KalmanBoxTracker.reset_count()  # reset IDs so each sequence starts from 0
 
     def update(self, dets=np.empty((0, 5))):
         """

@@ -165,7 +165,6 @@ def run(model_path: str,
 
     # Optional: save predictions as MOTChallenge .txt for evaluation
     txt_path = str(output_path).replace(".mp4", "_pred.txt")
-    txt_file = open(txt_path, "w")
     print(f"      Predictions will be saved to: {txt_path}")
 
     # ── 5. Frame-by-frame loop ──────────────────────────────────────────────
@@ -173,63 +172,63 @@ def run(model_path: str,
     t_start = time.time()
     total_dets = 0
 
-    for frame_idx, frame_path in enumerate(frame_paths):
-        frame = cv2.imread(str(frame_path))
-        if frame is None:
-            continue
+    with open(txt_path, "w") as txt_file:
+        for frame_idx, frame_path in enumerate(frame_paths):
+            frame = cv2.imread(str(frame_path))
+            if frame is None:
+                continue
 
-        # ── 5a: Detect with YOLOv8 ─────────────────────────────────────
-        results = model(frame, conf=conf_threshold, verbose=False)[0]
+            # ── 5a: Detect with YOLOv8 ─────────────────────────────────────
+            results = model(frame, conf=conf_threshold, verbose=False)[0]
 
-        # Convert YOLOv8 results → numpy [x1, y1, x2, y2, conf]
-        dets_for_sort = np.empty((0, 5))
-        if results.boxes is not None and len(results.boxes) > 0:
-            boxes  = results.boxes.xyxy.cpu().numpy()   # (N, 4) pixel coords
-            confs  = results.boxes.conf.cpu().numpy()   # (N,)
-            # cls  = results.boxes.cls.cpu().numpy()    # (N,) — class ids
-            # For now, treat all detections as pedestrian (class 0)
-            dets_for_sort = np.hstack([boxes, confs.reshape(-1, 1)])
-            total_dets += len(dets_for_sort)
+            # Convert YOLOv8 results → numpy [x1, y1, x2, y2, conf]
+            dets_for_sort = np.empty((0, 5))
+            if results.boxes is not None and len(results.boxes) > 0:
+                boxes  = results.boxes.xyxy.cpu().numpy()   # (N, 4) pixel coords
+                confs  = results.boxes.conf.cpu().numpy()   # (N,)
+                # cls  = results.boxes.cls.cpu().numpy()    # (N,) — class ids
+                # For now, treat all detections as pedestrian (class 0)
+                dets_for_sort = np.hstack([boxes, confs.reshape(-1, 1)])
+                total_dets += len(dets_for_sort)
 
-        # ── 5b: Update SORT tracker ─────────────────────────────────────
-        #  Output: (M, 5)  [x1, y1, x2, y2, track_id]
-        tracks = tracker.update(dets_for_sort)
+            # ── 5b: Update SORT tracker ─────────────────────────────────────
+            #  Output: (M, 5)  [x1, y1, x2, y2, track_id]
+            tracks = tracker.update(dets_for_sort)
 
-        # ── 5c: Draw tracks ─────────────────────────────────────────────
-        frame = draw_tracks(frame, tracks, class_id=0)
+            # ── 5c: Draw tracks ─────────────────────────────────────────────
+            frame = draw_tracks(frame, tracks, class_id=0)
 
-        # ── 5d: Overlay stats ───────────────────────────────────────────
-        seq_name = Path(seq_dir).name
-        n_tracks = len(tracks)
-        cv2.putText(frame, f"{seq_name}  Frame {frame_idx+1}/{len(frame_paths)}",
-                    (10, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
-        cv2.putText(frame, f"Active tracks: {n_tracks}",
-                    (10, 58), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 144), 2, cv2.LINE_AA)
-        cv2.putText(frame, f"Dets: {len(dets_for_sort)}",
-                    (10, 84), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 200, 0), 2, cv2.LINE_AA)
+            # ── 5d: Overlay stats ───────────────────────────────────────────
+            seq_name = Path(seq_dir).name
+            n_tracks = len(tracks)
+            cv2.putText(frame, f"{seq_name}  Frame {frame_idx+1}/{len(frame_paths)}",
+                        (10, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(frame, f"Active tracks: {n_tracks}",
+                        (10, 58), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 144), 2, cv2.LINE_AA)
+            cv2.putText(frame, f"Dets: {len(dets_for_sort)}",
+                        (10, 84), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 200, 0), 2, cv2.LINE_AA)
 
-        # ── 5e: Write frame ─────────────────────────────────────────────
-        writer.write(frame)
+            # ── 5e: Write frame ─────────────────────────────────────────────
+            writer.write(frame)
 
-        # ── 5f: Save predictions (MOTChallenge format) ───────────────────
-        # format: frame,id,x,y,w,h,conf,-1,-1,-1
-        for track in tracks:
-            x1,y1,x2,y2,tid = int(track[0]),int(track[1]),int(track[2]),int(track[3]),int(track[4])
-            w_box = x2-x1; h_box = y2-y1
-            txt_file.write(f"{frame_idx+1},{tid},{x1},{y1},{w_box},{h_box},1,-1,-1,-1\n")
+            # ── 5f: Save predictions (MOTChallenge format) ───────────────────
+            # format: frame,id,x,y,w,h,conf,-1,-1,-1
+            for track in tracks:
+                x1,y1,x2,y2,tid = int(track[0]),int(track[1]),int(track[2]),int(track[3]),int(track[4])
+                w_box = x2-x1; h_box = y2-y1
+                txt_file.write(f"{frame_idx+1},{tid},{x1},{y1},{w_box},{h_box},1,-1,-1,-1\n")
 
-        # Progress print every 50 frames
-        if (frame_idx + 1) % 50 == 0 or frame_idx == 0:
-            elapsed = time.time() - t_start
-            fps_proc = (frame_idx + 1) / elapsed
-            eta = (len(frame_paths) - frame_idx - 1) / fps_proc
-            print(f"  Frame {frame_idx+1:4d}/{len(frame_paths)} | "
-                  f"tracks={n_tracks:3d} | "
-                  f"speed={fps_proc:.1f} fps | "
-                  f"ETA={eta:.0f}s")
+            # Progress print every 50 frames
+            if (frame_idx + 1) % 50 == 0 or frame_idx == 0:
+                elapsed = time.time() - t_start
+                fps_proc = (frame_idx + 1) / elapsed
+                eta = (len(frame_paths) - frame_idx - 1) / fps_proc
+                print(f"  Frame {frame_idx+1:4d}/{len(frame_paths)} | "
+                      f"tracks={n_tracks:3d} | "
+                      f"speed={fps_proc:.1f} fps | "
+                      f"ETA={eta:.0f}s")
 
     writer.release()
-    txt_file.close()
     elapsed = time.time() - t_start
     print(f"\n=== DONE ===")
     print(f"  Total frames   : {len(frame_paths)}")
